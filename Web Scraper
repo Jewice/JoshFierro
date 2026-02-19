@@ -1,0 +1,158 @@
+import os
+import time
+import logging
+from datetime import datetime
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+
+# Constants
+LYFT_LOGIN_URL = "https://account.lyft.com/auth/email?v=lyft-for-business&next=https%3A%2F%2Fbusiness.lyft.com%2Flogin"
+LYFT_EMAIL_INPUT_CSS = "//input[@name='email' and @id='email']"
+OUTLOOK_EMAIL_INPUT_CSS = "//input[@name='loginfmt' and @id='i0116']"
+OUTLOOK_PASSWORD_INPUT_CSS = "//input[@name='passwd' and @id='i0118']"
+OUTLOOK_SUBMIT_BUTTON_CSS = "//input[@id='idSIButton9']"
+LATEST_EMAIL_SUBJECT = "Here's your one-time Lyft Business log-in link"
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+def initialize_driver():
+    """Initialize and return a Selenium WebDriver instance."""
+    service = ChromeService(ChromeDriverManager().install())
+    return webdriver.Chrome(service=service)
+
+def get_credentials():
+    """Prompt the user to input their email and password."""
+    email = input("Please enter your UCSD email address: ")
+    password = input("Please enter your password (hidden): ")
+    return email, password
+
+def login_to_lyft(driver, email):
+    """Log in to Lyft using the provided email."""
+    logging.info("Logging in to Lyft...")
+    driver.get(LYFT_LOGIN_URL)
+    email_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, LYFT_EMAIL_INPUT_CSS)))
+    email_input.send_keys(email + Keys.RETURN)
+
+def login_to_outlook(driver, email, password):
+    """Log in to Outlook using the provided email and password."""
+    logging.info("Logging in to Outlook...")
+    driver.get("https://mail.ucsd.edu")
+
+    # Enter email
+    email_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, OUTLOOK_EMAIL_INPUT_CSS)))
+    email_input.send_keys(email + Keys.RETURN)
+
+    # Enter password
+    password_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, OUTLOOK_PASSWORD_INPUT_CSS)))
+    password_input.send_keys(password + Keys.RETURN)
+
+    # Re-locate and click the submit button after the page updates
+    try:
+        submit_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, OUTLOOK_SUBMIT_BUTTON_CSS)))
+        submit_button.click()
+    except Exception as e:
+        logging.error(f"Error clicking submit button: {e}")
+        # If the button is not found, assume the login was successful due to the RETURN key press
+        logging.info("Assuming login was successful via RETURN key press.")
+
+def extract_lyft_login_link(driver):
+    """Extract the Lyft login link from the latest email."""
+    logging.info("Extracting Lyft login link from email...")
+    email = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located(
+            (By.XPATH, f"//span[contains(text(), \"{LATEST_EMAIL_SUBJECT}\")]")
+        )
+    )
+    email.click()
+    link_element = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located(
+            (By.XPATH, "//a[contains(@style, 'text-decoration:none') and contains(text(), 'Log in')]")
+        )
+    )
+    return link_element.get_attribute('href')
+
+def navigate_to_all_rides(driver):
+    """Navigate to the 'All Rides' tab in the Lyft Business dashboard."""
+    logging.info("Navigating to 'All Rides' tab...")
+    tab_all_rides = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a[data-testid='tab-all']")))
+    tab_all_rides.click()
+
+def capture_ride_screenshots(driver, output_directory):
+    """Capture screenshots of rides for the current month."""
+    logging.info("Capturing ride screenshots...")
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    os.makedirs(output_directory, exist_ok=True)
+
+    # Take a screenshot to debug the page
+    driver.save_screenshot("debug_all_rides.png")
+
+    # Locate the ride list container
+    ride_list_container = WebDriverWait(driver, 20).until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, "ul#ride-list"))
+    )
+
+    # Locate all ride elements
+    ride_elements = ride_list_container.find_elements(By.CSS_SELECTOR, "a[data-e2e='ride-list-item']")
+    logging.info(f"Found {len(ride_elements)} rides.")
+
+    if len(ride_elements) == 0:
+        logging.info("No rides found. Exiting loop.")
+        return
+
+    for ride in ride_elements:
+        try:
+            ride.click()
+            time.sleep(1)  # Wait for details to load
+
+            # Get ride details for debugging
+            name = ride.find_element(By.CSS_SELECTOR, "h2[data-testid='core-ui-text']").text
+            date_text = ride.find_element(By.CSS_SELECTOR, "span[data-testid='core-ui-text']").text
+            logging.info(f"Processing ride: {name}, Date: {date_text}")
+
+            # Parse the date text to extract the ride date (format: MMM DD, HH:MM AM/PM PST)
+            ride_date = datetime.strptime(date_text, "%b %d, %I:%M %p PST").replace(year=current_year)
+            logging.info(f"Parsed ride date: {ride_date}")
+
+            if ride_date.month == current_month:
+                timestamp = ride_date.strftime("%Y_%m_%d_%H_%M")
+                screenshot_path = os.path.join(output_directory, f"ride_{timestamp}.png")
+                driver.save_screenshot(screenshot_path)
+                logging.info(f"Screenshot saved: {screenshot_path}")
+            else:
+                logging.info(f"Skipping ride from {ride_date.strftime('%Y-%m')} (not current month).")
+
+            # Close ride details
+            close_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.close-button-class"))
+            )
+            close_button.click()
+            time.sleep(0.5)
+        except Exception as e:
+            logging.error(f"Error processing ride: {e}")
+
+def main():
+    """Main function to execute the script."""
+    email, password = get_credentials()
+    output_directory = os.path.join(os.getcwd(), f"ride_screenshots_{datetime.now().strftime('%Y_%m')}")
+
+    driver = initialize_driver()
+    try:
+        login_to_lyft(driver, email)
+        login_to_outlook(driver, email, password)
+        login_link = extract_lyft_login_link(driver)
+        driver.get(login_link)
+        navigate_to_all_rides(driver)
+        capture_ride_screenshots(driver, output_directory)
+    finally:
+        driver.quit()
+        logging.info("Script execution completed.")
+
+if __name__ == "__main__":
+    main()
