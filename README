@@ -20,20 +20,12 @@ I'm on a continuous learning journey: I don't claim to know everything, but I'm 
 - **ML/Analysis Techniques:** Data cleaning, EDA, statistical modeling, neural nets
 - **Other:** Jupyter Notebooks, Git, domain exposure in neuroscience & finance
 
-### 📊 Featured Projects (OCR!)
-These are the ones I mentioned—I'll add repos, code, notebooks, and dashboards as I migrate them here.
-
-- **Alzheimer's Neuroscience Analysis** — Applied ML/data techniques to study progression patterns (details + code coming)
-- **Financial Markets Exploration** — Combined fundamental & technical analysis on select datasets to uncover drivers (principled, not speculative)
-- **Other Portfolio Pieces** — EDA on public datasets, dashboard builds, puzzle-like insight projects
+### 📊 Featured Projects 
+- **Automated Lyft Concierge (Proof of Concept)** — Built a Selenium-based automation tool to log into Lyft Business via email magic-link, navigate to the ride history dashboard, and capture screenshots of monthly rides for expense/review purposes. Demonstrates web scraping, multi-step authentication handling, dynamic element interaction, and organized output generation. Testing hit authentication/security flags (common with protected dashboards), but core flow works in theory—great exercise in practical automation and data capture. Tools: Selenium, WebDriver, Python logging.
 
 More repos pinned below once live. Stay tuned—I'm actively building!
 
 ### Let's Connect!
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)]([Your LinkedIn URL])
+[![LinkedIn](www.linkedin.com/in/joshua-fierro-20165b19b
 
 Thanks for stopping by! Whether you're a recruiter, fellow analyst, or just curious about data's magic—I'm open to chats, feedback, or opportunities. Let's turn some data into decisions together. 🚀
-
-<!-- Optional dynamic stats (copy from https://github-readme-stats.vercel.app) -->
-![GitHub Stats](https://github-readme-stats.vercel.app/api?username=YOURUSERNAME&show_icons=true&theme=radical&hide_border=true)
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=YOURUSERNAME&layout=compact&theme=radical&hide_border=true)
